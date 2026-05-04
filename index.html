@@ -1,602 +1,73 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SpeedTest Pro</title>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpeedTest Pro</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>SpeedTest</h1>
+        <p>NETWORK PERFORMANCE ANALYZER</p>
+      </header>
 
-  :root {
-    --bg: #080c14;
-    --surface: #0d1420;
-    --surface2: #111927;
-    --border: rgba(255,255,255,0.07);
-    --accent: #00d4aa;
-    --accent2: #0099ff;
-    --warn: #ff9f0a;
-    --danger: #ff453a;
-    --text: #e8edf5;
-    --muted: #5a6a82;
-    --font-display: 'Rajdhani', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-  }
+      <div class="gauge-section">
+        <div class="gauge-outer">
+          <canvas id="gaugeCanvas" width="260" height="150"></canvas>
+          <div class="gauge-center">
+            <div class="gauge-speed" id="speedNum">0</div>
+            <div class="gauge-unit">MBPS</div>
+          </div>
+        </div>
+        <div class="phase-label" id="phaseLabel">Ready to test</div>
+      </div>
 
-  html, body {
-    min-height: 100vh;
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-display);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem 1rem;
-    overflow-x: hidden;
-  }
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
 
-  /* animated grid bg */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
+      <div class="stats">
+        <div class="stat" id="statPing">
+          <span class="stat-icon">📡</span>
+          <div class="stat-label">Ping</div>
+          <div class="stat-val" id="pingVal">—</div>
+          <div class="stat-unit">MS</div>
+        </div>
+        <div class="stat" id="statDl">
+          <span class="stat-icon">⬇</span>
+          <div class="stat-label">Download</div>
+          <div class="stat-val" id="dlVal">—</div>
+          <div class="stat-unit">MBPS</div>
+        </div>
+        <div class="stat" id="statUl">
+          <span class="stat-icon">⬆</span>
+          <div class="stat-label">Upload</div>
+          <div class="stat-val" id="ulVal">—</div>
+          <div class="stat-unit">MBPS</div>
+        </div>
+      </div>
 
-  .wrapper {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    max-width: 560px;
-  }
+      <div class="result-row" id="resultRow"></div>
 
-  header {
-    text-align: center;
-    margin-bottom: 2.5rem;
-  }
+      <button class="btn-start" id="btnStart" onclick="runTest()">
+        ▶ Start Test
+      </button>
 
-  header h1 {
-    font-size: 2.4rem;
-    font-weight: 700;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  header p {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--muted);
-    letter-spacing: 2px;
-    margin-top: 6px;
-  }
-
-  /* big gauge */
-  .gauge-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 2rem;
-  }
-
-  .gauge-outer {
-    position: relative;
-    width: 260px;
-    height: 150px;
-    margin-bottom: 1rem;
-  }
-
-  #gaugeCanvas {
-    position: absolute;
-    top: 0; left: 0;
-  }
-
-  .gauge-center {
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-  }
-
-  .gauge-speed {
-    font-size: 3.2rem;
-    font-weight: 700;
-    font-family: var(--font-mono);
-    color: var(--text);
-    line-height: 1;
-    transition: color 0.3s;
-  }
-
-  .gauge-unit {
-    font-size: 0.8rem;
-    color: var(--muted);
-    letter-spacing: 2px;
-    font-family: var(--font-mono);
-  }
-
-  .phase-label {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--accent);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    min-height: 18px;
-    transition: opacity 0.3s;
-  }
-
-  /* progress bar */
-  .progress-track {
-    width: 100%;
-    height: 3px;
-    background: var(--surface2);
-    border-radius: 2px;
-    margin: 1rem 0 2rem;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    border-radius: 2px;
-    transition: width 0.4s ease;
-  }
-
-  /* stat cards */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 1.5rem;
-  }
-
-  .stat {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 12px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .stat::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--accent);
-    opacity: 0;
-    transition: opacity 0.4s;
-  }
-
-  .stat.done::after { opacity: 1; }
-
-  .stat-icon {
-    font-size: 1.1rem;
-    margin-bottom: 6px;
-    display: block;
-  }
-
-  .stat-label {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-
-  .stat-val {
-    font-size: 1.6rem;
-    font-weight: 700;
-    font-family: var(--font-mono);
-    color: var(--text);
-    line-height: 1;
-  }
-
-  .stat-unit {
-    font-size: 0.6rem;
-    color: var(--muted);
-    letter-spacing: 1px;
-    margin-top: 3px;
-  }
-
-  /* result badge */
-  .result-row {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    min-height: 28px;
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 4px 16px;
-    border-radius: 999px;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 2px;
-    font-weight: 500;
-  }
-
-  .badge-great { background: rgba(0,212,170,0.15); color: var(--accent); border: 1px solid rgba(0,212,170,0.3); }
-  .badge-good  { background: rgba(0,153,255,0.15); color: var(--accent2); border: 1px solid rgba(0,153,255,0.3); }
-  .badge-avg   { background: rgba(255,159,10,0.12); color: var(--warn);   border: 1px solid rgba(255,159,10,0.3); }
-  .badge-slow  { background: rgba(255,69,58,0.12);  color: var(--danger); border: 1px solid rgba(255,69,58,0.3); }
-
-  /* start button */
-  .btn-start {
-    display: block;
-    width: 100%;
-    padding: 16px;
-    font-family: var(--font-display);
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #080c14;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-  }
-
-  .btn-start:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  .btn-start:not(:disabled):hover { opacity: 0.88; }
-  .btn-start:not(:disabled):active { transform: scale(0.98); }
-
-  /* info footer */
-  .info-footer {
-    margin-top: 1.5rem;
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-
-  .info-item {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    color: var(--muted);
-    letter-spacing: 1px;
-    text-align: center;
-  }
-
-  .info-item span {
-    display: block;
-    color: var(--text);
-    font-size: 0.72rem;
-    margin-top: 2px;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  .pulsing { animation: pulse 1.2s ease-in-out infinite; }
-</style>
-</head>
-<body>
-<div class="wrapper">
-  <header>
-    <h1>SpeedTest</h1>
-    <p>NETWORK PERFORMANCE ANALYZER</p>
-  </header>
-
-  <div class="gauge-section">
-    <div class="gauge-outer">
-      <canvas id="gaugeCanvas" width="260" height="150"></canvas>
-      <div class="gauge-center">
-        <div class="gauge-speed" id="speedNum">0</div>
-        <div class="gauge-unit">MBPS</div>
+      <div class="info-footer">
+        <div class="info-item">
+          SERVER<span id="serverInfo">Auto-Select</span>
+        </div>
+        <div class="info-item">PROTOCOL<span>HTTPS / TCP</span></div>
+        <div class="info-item">IP<span id="ipInfo">—</span></div>
       </div>
     </div>
-    <div class="phase-label" id="phaseLabel">Ready to test</div>
-  </div>
 
-  <div class="progress-track">
-    <div class="progress-fill" id="progressFill"></div>
-  </div>
-
-  <div class="stats">
-    <div class="stat" id="statPing">
-      <span class="stat-icon">📡</span>
-      <div class="stat-label">Ping</div>
-      <div class="stat-val" id="pingVal">—</div>
-      <div class="stat-unit">MS</div>
-    </div>
-    <div class="stat" id="statDl">
-      <span class="stat-icon">⬇</span>
-      <div class="stat-label">Download</div>
-      <div class="stat-val" id="dlVal">—</div>
-      <div class="stat-unit">MBPS</div>
-    </div>
-    <div class="stat" id="statUl">
-      <span class="stat-icon">⬆</span>
-      <div class="stat-label">Upload</div>
-      <div class="stat-val" id="ulVal">—</div>
-      <div class="stat-unit">MBPS</div>
-    </div>
-  </div>
-
-  <div class="result-row" id="resultRow"></div>
-
-  <button class="btn-start" id="btnStart" onclick="runTest()">▶ Start Test</button>
-
-  <div class="info-footer">
-    <div class="info-item">SERVER<span id="serverInfo">Auto-Select</span></div>
-    <div class="info-item">PROTOCOL<span>HTTPS / TCP</span></div>
-    <div class="info-item">IP<span id="ipInfo">—</span></div>
-  </div>
-</div>
-
-<script>
-const canvas = document.getElementById('gaugeCanvas');
-const ctx = canvas.getContext('2d');
-const W = 260, H = 150;
-const CX = W / 2, CY = H - 10;
-const R = 115;
-const START_ANGLE = Math.PI;
-const END_ANGLE = 0;
-
-function drawGauge(value, maxVal = 100) {
-  ctx.clearRect(0, 0, W, H);
-  const pct = Math.min(value / maxVal, 1);
-  const sweepAngle = Math.PI * pct;
-
-  // track
-  ctx.beginPath();
-  ctx.arc(CX, CY, R, START_ANGLE, END_ANGLE, false);
-  ctx.strokeStyle = '#111927';
-  ctx.lineWidth = 14;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // ticks
-  for (let i = 0; i <= 10; i++) {
-    const angle = Math.PI + (Math.PI / 10) * i;
-    const inner = R - 20, outer = R - 8;
-    const cos = Math.cos(angle), sin = Math.sin(angle);
-    ctx.beginPath();
-    ctx.moveTo(CX + cos * inner, CY + sin * inner);
-    ctx.lineTo(CX + cos * outer, CY + sin * outer);
-    ctx.strokeStyle = '#1e2d42';
-    ctx.lineWidth = i % 5 === 0 ? 2 : 1;
-    ctx.stroke();
-  }
-
-  // colored arc
-  if (pct > 0) {
-    const grd = ctx.createLinearGradient(0, CY, W, CY);
-    if (pct < 0.3) {
-      grd.addColorStop(0, '#ff453a');
-      grd.addColorStop(1, '#ff9f0a');
-    } else if (pct < 0.7) {
-      grd.addColorStop(0, '#ff9f0a');
-      grd.addColorStop(1, '#0099ff');
-    } else {
-      grd.addColorStop(0, '#0099ff');
-      grd.addColorStop(1, '#00d4aa');
-    }
-    ctx.beginPath();
-    ctx.arc(CX, CY, R, START_ANGLE, START_ANGLE + sweepAngle, false);
-    ctx.strokeStyle = grd;
-    ctx.lineWidth = 14;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-
-    // needle dot
-    const needleAngle = START_ANGLE + sweepAngle;
-    const nx = CX + Math.cos(needleAngle) * R;
-    const ny = CY + Math.sin(needleAngle) * R;
-    ctx.beginPath();
-    ctx.arc(nx, ny, 7, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-  }
-
-  // center dot
-  ctx.beginPath();
-  ctx.arc(CX, CY, 5, 0, Math.PI * 2);
-  ctx.fillStyle = '#1e2d42';
-  ctx.fill();
-}
-
-drawGauge(0);
-
-let animFrame = null;
-let currentSpeed = 0;
-
-function animateGaugeTo(target, duration = 800) {
-  return new Promise(resolve => {
-    const start = currentSpeed;
-    const t0 = performance.now();
-    function step(now) {
-      const t = Math.min((now - t0) / duration, 1);
-      const ease = 1 - Math.pow(1 - t, 3);
-      currentSpeed = start + (target - start) * ease;
-      drawGauge(currentSpeed);
-      document.getElementById('speedNum').textContent = currentSpeed < 1
-        ? currentSpeed.toFixed(2)
-        : currentSpeed.toFixed(1);
-      if (t < 1) animFrame = requestAnimationFrame(step);
-      else { currentSpeed = target; resolve(); }
-    }
-    animFrame = requestAnimationFrame(step);
-  });
-}
-
-function setProgress(pct, label) {
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('phaseLabel').textContent = label;
-}
-
-async function measurePing(samples = 8) {
-  const times = [];
-  const targets = [
-    'https://www.google.com/favicon.ico',
-    'https://www.cloudflare.com/favicon.ico',
-    'https://www.apple.com/favicon.ico'
-  ];
-  for (let i = 0; i < samples; i++) {
-    const url = targets[i % targets.length] + '?_=' + Date.now();
-    const t0 = performance.now();
-    try {
-      await fetch(url, { mode: 'no-cors', cache: 'no-store' });
-    } catch(e) {}
-    times.push(performance.now() - t0);
-    await sleep(80);
-  }
-  times.sort((a,b) => a-b);
-  const trimmed = times.slice(1, -1);
-  return Math.round(trimmed.reduce((a,b)=>a+b,0)/trimmed.length);
-}
-
-async function measureDownload() {
-  // Use multiple small fetches to estimate throughput
-  const urls = [
-    'https://speed.cloudflare.com/__down?bytes=1000000',
-    'https://speed.cloudflare.com/__down?bytes=2000000',
-    'https://speed.cloudflare.com/__down?bytes=5000000',
-  ];
-  const results = [];
-  for (const url of urls) {
-    const t0 = performance.now();
-    try {
-      const r = await fetch(url + '&t=' + Date.now(), { cache: 'no-store' });
-      const buf = await r.arrayBuffer();
-      const elapsed = (performance.now() - t0) / 1000;
-      const bytes = buf.byteLength;
-      results.push((bytes * 8) / elapsed / 1e6);
-    } catch(e) {
-      // fallback: measure time to fetch google
-      const t1 = performance.now();
-      try { await fetch('https://www.google.com/generate_204?_=' + Date.now(), { cache: 'no-store', mode: 'no-cors' }); } catch(e2){}
-      const elapsed2 = (performance.now() - t1) / 1000;
-      results.push(1 / elapsed2); // rough estimate
-    }
-    setProgress(35 + results.length * 10, `Downloading... ${results.length}/${urls.length}`);
-    await animateGaugeTo(results[results.length-1] || 0, 400);
-  }
-  return parseFloat((results.reduce((a,b)=>a+b,0)/results.length).toFixed(2));
-}
-
-async function measureUpload() {
-  const sizes = [500000, 1000000, 2000000];
-  const results = [];
-  for (const size of sizes) {
-    const data = new Uint8Array(size).fill(65);
-    const blob = new Blob([data]);
-    const t0 = performance.now();
-    try {
-      await fetch('https://speed.cloudflare.com/__up?t=' + Date.now(), {
-        method: 'POST',
-        body: blob,
-        cache: 'no-store'
-      });
-    } catch(e) {
-      try {
-        await fetch('https://httpbin.org/post?_=' + Date.now(), {
-          method: 'POST', body: blob, mode: 'no-cors', cache: 'no-store'
-        });
-      } catch(e2) {}
-    }
-    const elapsed = (performance.now() - t0) / 1000;
-    results.push((size * 8) / elapsed / 1e6);
-    setProgress(75 + results.length * 7, `Uploading... ${results.length}/${sizes.length}`);
-    await animateGaugeTo(results[results.length-1] || 0, 400);
-  }
-  return parseFloat((results.reduce((a,b)=>a+b,0)/results.length).toFixed(2));
-}
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-function getIp() {
-  fetch('https://api.ipify.org?format=json')
-    .then(r => r.json())
-    .then(d => { document.getElementById('ipInfo').textContent = d.ip; })
-    .catch(() => {});
-}
-
-function getRating(dl) {
-  if (dl >= 50)  return ['EXCELLENT', 'badge-great'];
-  if (dl >= 25)  return ['GOOD', 'badge-good'];
-  if (dl >= 10)  return ['AVERAGE', 'badge-avg'];
-  return ['SLOW', 'badge-slow'];
-}
-
-async function runTest() {
-  const btn = document.getElementById('btnStart');
-  btn.disabled = true;
-  btn.textContent = 'TESTING...';
-  document.getElementById('resultRow').innerHTML = '';
-  document.getElementById('pingVal').textContent = '—';
-  document.getElementById('dlVal').textContent = '—';
-  document.getElementById('ulVal').textContent = '—';
-  ['statPing','statDl','statUl'].forEach(id => document.getElementById(id).classList.remove('done'));
-  currentSpeed = 0;
-  drawGauge(0);
-  document.getElementById('speedNum').textContent = '0';
-
-  getIp();
-
-  // PING
-  setProgress(5, 'Measuring latency...');
-  document.getElementById('phaseLabel').classList.add('pulsing');
-  const ping = await measurePing();
-  document.getElementById('phaseLabel').classList.remove('pulsing');
-  document.getElementById('pingVal').textContent = ping;
-  document.getElementById('statPing').classList.add('done');
-  setProgress(25, 'Ping done ✓');
-  await sleep(300);
-
-  // DOWNLOAD
-  setProgress(30, 'Testing download speed...');
-  document.getElementById('phaseLabel').classList.add('pulsing');
-  const dl = await measureDownload();
-  document.getElementById('phaseLabel').classList.remove('pulsing');
-  await animateGaugeTo(dl, 600);
-  document.getElementById('dlVal').textContent = dl.toFixed(1);
-  document.getElementById('statDl').classList.add('done');
-  setProgress(70, 'Download done ✓');
-  await sleep(300);
-
-  // UPLOAD
-  setProgress(72, 'Testing upload speed...');
-  document.getElementById('phaseLabel').classList.add('pulsing');
-  const ul = await measureUpload();
-  document.getElementById('phaseLabel').classList.remove('pulsing');
-  await animateGaugeTo(ul, 600);
-  document.getElementById('ulVal').textContent = ul.toFixed(1);
-  document.getElementById('statUl').classList.add('done');
-  setProgress(100, 'Test complete ✓');
-
-  await animateGaugeTo(dl, 800);
-
-  const [ratingText, ratingClass] = getRating(dl);
-  document.getElementById('resultRow').innerHTML =
-    `<span class="badge ${ratingClass}">${ratingText} CONNECTION</span>`;
-
-  btn.disabled = false;
-  btn.textContent = '↺ Run Again';
-}
-</script>
-</body>
+    <script src="./js/script.js"></script>
+  </body>
 </html>
