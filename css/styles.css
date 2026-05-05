@@ -7,17 +7,18 @@
 }
 
 :root {
-  --bg: #080c14;
-  --surface: #0d1420;
-  --surface2: #111927;
-  --border: rgba(255, 255, 255, 0.07);
-  --accent: #00d4aa;
-  --accent2: #0099ff;
-  --warn: #ff9f0a;
-  --danger: #ff453a;
-  --text: #e8edf5;
-  --muted: #5a6a82;
-  --font-display: 'Rajdhani', sans-serif;
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface2: #1a2236;
+  --border: rgba(255, 255, 255, 0.08);
+  --accent: #3b82f6;
+  --accent-dim: rgba(59, 130, 246, 0.15);
+  --accent2: #10b981;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --text: #f1f5f9;
+  --muted: #4b5e7a;
+  --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -30,20 +31,22 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem 1rem;
+  justify-content: flex-start;
+  padding: 1.5rem 1rem 3rem;
   overflow-x: hidden;
 }
 
-/* animated grid bg */
+/* subtle dot grid */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(0, 212, 170, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 212, 170, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background-image: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.07) 1px,
+    transparent 1px
+  );
+  background-size: 32px 32px;
   pointer-events: none;
   z-index: 0;
 }
@@ -55,43 +58,89 @@ body::before {
   max-width: 560px;
 }
 
+/* GitHub bar */
+.github-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.8rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.github-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.github-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.made-by {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.made-by strong {
+  color: var(--text);
+}
+
+/* Header */
 header {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
 }
 
 header h1 {
-  font-size: 2.4rem;
+  font-size: 2.2rem;
   font-weight: 700;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+
+header h1 .dot {
+  color: var(--accent);
 }
 
 header p {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   color: var(--muted);
-  letter-spacing: 2px;
-  margin-top: 6px;
+  letter-spacing: 3px;
+  margin-top: 4px;
 }
 
-/* big gauge */
+/* Gauge */
 .gauge-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .gauge-outer {
   position: relative;
   width: 260px;
   height: 150px;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 #gaugeCanvas {
@@ -102,45 +151,47 @@ header p {
 
 .gauge-center {
   position: absolute;
-  bottom: 0;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
 }
 
 .gauge-speed {
-  font-size: 3.2rem;
+  font-size: 3rem;
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--text);
   line-height: 1;
   transition: color 0.3s;
+  min-width: 5ch;
+  display: inline-block;
+  text-align: center;
 }
 
 .gauge-unit {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: var(--muted);
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   font-family: var(--font-mono);
 }
 
 .phase-label {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--accent);
   letter-spacing: 2px;
   text-transform: uppercase;
   min-height: 18px;
-  transition: opacity 0.3s;
 }
 
-/* progress bar */
+/* Progress */
 .progress-track {
   width: 100%;
-  height: 3px;
+  height: 2px;
   background: var(--surface2);
   border-radius: 2px;
-  margin: 1rem 0 2rem;
+  margin: 0.5rem 0 1.8rem;
   overflow: hidden;
 }
 
@@ -149,25 +200,26 @@ header p {
   width: 0%;
   background: linear-gradient(90deg, var(--accent), var(--accent2));
   border-radius: 2px;
-  transition: width 0.4s ease;
+  transition: width 0.5s ease;
 }
 
-/* stat cards */
+/* Stats */
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 1.5rem;
+  gap: 10px;
+  margin-bottom: 1.2rem;
 }
 
 .stat {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px 12px;
+  border-radius: 10px;
+  padding: 14px 10px;
   text-align: center;
   position: relative;
   overflow: hidden;
+  transition: border-color 0.3s;
 }
 
 .stat::after {
@@ -177,9 +229,13 @@ header p {
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
   opacity: 0;
   transition: opacity 0.4s;
+}
+
+.stat.done {
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 .stat.done::after {
@@ -187,22 +243,22 @@ header p {
 }
 
 .stat-icon {
-  font-size: 1.1rem;
-  margin-bottom: 6px;
+  font-size: 1rem;
+  margin-bottom: 5px;
   display: block;
 }
 
 .stat-label {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--muted);
   letter-spacing: 2px;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .stat-val {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--text);
@@ -210,17 +266,17 @@ header p {
 }
 
 .stat-unit {
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   color: var(--muted);
   letter-spacing: 1px;
   margin-top: 3px;
 }
 
-/* result badge */
+/* Result badge */
 .result-row {
   text-align: center;
-  margin-bottom: 1.5rem;
-  min-height: 28px;
+  margin-bottom: 1.2rem;
+  min-height: 26px;
 }
 
 .badge {
@@ -228,54 +284,103 @@ header p {
   padding: 4px 16px;
   border-radius: 999px;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   letter-spacing: 2px;
   font-weight: 500;
 }
 
 .badge-great {
-  background: rgba(0, 212, 170, 0.15);
-  color: var(--accent);
-  border: 1px solid rgba(0, 212, 170, 0.3);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent2);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 .badge-good {
-  background: rgba(0, 153, 255, 0.15);
-  color: var(--accent2);
-  border: 1px solid rgba(0, 153, 255, 0.3);
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent);
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 .badge-avg {
-  background: rgba(255, 159, 10, 0.12);
+  background: rgba(245, 158, 11, 0.1);
   color: var(--warn);
-  border: 1px solid rgba(255, 159, 10, 0.3);
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 .badge-slow {
-  background: rgba(255, 69, 58, 0.12);
+  background: rgba(239, 68, 68, 0.1);
   color: var(--danger);
-  border: 1px solid rgba(255, 69, 58, 0.3);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-/* start button */
+/* History Graph */
+.graph-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 1.4rem;
+}
+
+.graph-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.graph-title {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.graph-legend {
+  display: flex;
+  gap: 14px;
+}
+
+.leg {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+}
+
+.leg.dl {
+  color: var(--accent);
+}
+.leg.ul {
+  color: var(--accent2);
+}
+
+#historyGraph {
+  width: 100%;
+  height: 120px;
+  display: block;
+}
+
+/* Button */
 .btn-start {
   display: block;
   width: 100%;
-  padding: 16px;
+  padding: 15px;
   font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #080c14;
+  background: var(--accent);
+  color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
   transition:
     opacity 0.2s,
-    transform 0.1s;
+    transform 0.1s,
+    background 0.2s;
 }
 
 .btn-start:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
   transform: none;
 }
@@ -283,32 +388,35 @@ header p {
 .btn-start:not(:disabled):hover {
   opacity: 0.88;
 }
+
 .btn-start:not(:disabled):active {
   transform: scale(0.98);
 }
 
-/* info footer */
+/* Footer */
 .info-footer {
-  margin-top: 1.5rem;
+  margin-top: 1.4rem;
   display: flex;
   justify-content: center;
-  gap: 24px;
+  gap: 28px;
   flex-wrap: wrap;
 }
 
 .info-item {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--muted);
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   text-align: center;
+  text-transform: uppercase;
 }
 
 .info-item span {
   display: block;
   color: var(--text);
-  font-size: 0.72rem;
-  margin-top: 2px;
+  font-size: 0.7rem;
+  margin-top: 3px;
+  letter-spacing: 0.5px;
 }
 
 @keyframes pulse {
@@ -317,10 +425,10 @@ header p {
     opacity: 1;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.35;
   }
 }
 
 .pulsing {
-  animation: pulse 1.2s ease-in-out infinite;
+  animation: pulse 1s ease-in-out infinite;
 }
