@@ -41,7 +41,7 @@
           <canvas id="gaugeCanvas" width="260" height="150"></canvas>
           <div class="gauge-center">
             <div class="gauge-speed" id="speedNum">0</div>
-            <div class="gauge-unit">MBPS</div>
+            <div class="gauge-unit" id="gaugeUnit">MBPS</div>
           </div>
         </div>
         <div class="phase-label" id="phaseLabel">Ready to test</div>
@@ -64,13 +64,13 @@
           <span class="stat-icon">⬇</span>
           <div class="stat-label">Download</div>
           <div class="stat-val" id="dlVal">—</div>
-          <div class="stat-unit">MBPS</div>
+          <div class="stat-unit" id="dlUnit">MBPS</div>
         </div>
         <div class="stat" id="statUl">
           <span class="stat-icon">⬆</span>
           <div class="stat-label">Upload</div>
           <div class="stat-val" id="ulVal">—</div>
-          <div class="stat-unit">MBPS</div>
+          <div class="stat-unit" id="ulUnit">MBPS</div>
         </div>
       </div>
 
@@ -103,6 +103,6 @@
         <div class="info-item">IP<span id="ipInfo">—</span></div>
       </div>
     </div>
-    <script src="./js/script.js"></script>
+    <script src="/js/script.js"></script>
   </body>
 </html>
