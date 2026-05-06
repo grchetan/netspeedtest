@@ -147,30 +147,40 @@ function drawHistoryGraph() {
   drawLine(historyData.ul, 'rgb(16,185,129)');
 }
 
-// ─── Gauge animation ──────────────────────────────────────────────────────────
-let animFrame = null;
+// ─── Live gauge (updates every animation frame ~1ms) ─────────────────────────
+let liveRafId = null;
 let currentSpeed = 0;
+let liveTargetSpeed = 0; // set from outside, gauge chases it every frame
 
-function animateGaugeTo(target, duration = 600) {
-  return new Promise((resolve) => {
-    if (animFrame) cancelAnimationFrame(animFrame);
-    const start = currentSpeed;
-    const t0 = performance.now();
-    function step(now) {
-      const t = Math.min((now - t0) / duration, 1);
-      const ease = 1 - Math.pow(1 - t, 3);
-      currentSpeed = start + (target - start) * ease;
-      drawGauge(currentSpeed);
-      document.getElementById('speedNum').textContent =
-        currentSpeed < 1 ? currentSpeed.toFixed(2) : currentSpeed.toFixed(1);
-      if (t < 1) animFrame = requestAnimationFrame(step);
-      else {
-        currentSpeed = target;
-        resolve();
-      }
-    }
-    animFrame = requestAnimationFrame(step);
-  });
+function startLiveGauge() {
+  if (liveRafId) return;
+  function frame() {
+    // Smooth chase: closes 18% of gap each frame (~60fps = ~1ms per tick feel)
+    currentSpeed += (liveTargetSpeed - currentSpeed) * 0.18;
+    drawGauge(currentSpeed);
+    const s = currentSpeed;
+    document.getElementById('speedNum').textContent =
+      s < 1 ? s.toFixed(2) : s.toFixed(1);
+    liveRafId = requestAnimationFrame(frame);
+  }
+  liveRafId = requestAnimationFrame(frame);
+}
+
+function stopLiveGauge() {
+  if (liveRafId) {
+    cancelAnimationFrame(liveRafId);
+    liveRafId = null;
+  }
+}
+
+// Instant snap for reset
+function snapGaugeTo(val) {
+  stopLiveGauge();
+  currentSpeed = val;
+  liveTargetSpeed = val;
+  drawGauge(val);
+  document.getElementById('speedNum').textContent =
+    val === 0 ? '0' : val.toFixed(1);
 }
 
 function setProgress(pct, label) {
@@ -197,61 +207,47 @@ async function measurePing(samples = 8) {
       await fetch(url, { mode: 'no-cors', cache: 'no-store' });
     } catch (e) {}
     times.push(performance.now() - t0);
-    // no pause — continuous
   }
   times.sort((a, b) => a - b);
   const trimmed = times.slice(1, -1);
   return Math.round(trimmed.reduce((a, b) => a + b, 0) / trimmed.length);
 }
 
-// ─── Download (5 samples, continuous) ────────────────────────────────────────
-async function measureDownload() {
-  const tests = [
-    { url: 'https://speed.cloudflare.com/__down?bytes=500000', bytes: 500000 },
-    {
-      url: 'https://speed.cloudflare.com/__down?bytes=1000000',
-      bytes: 1000000,
-    },
-    {
-      url: 'https://speed.cloudflare.com/__down?bytes=2000000',
-      bytes: 2000000,
-    },
-    {
-      url: 'https://speed.cloudflare.com/__down?bytes=3000000',
-      bytes: 3000000,
-    },
-    {
-      url: 'https://speed.cloudflare.com/__down?bytes=5000000',
-      bytes: 5000000,
-    },
-  ];
-  const results = [];
-
-  for (let i = 0; i < tests.length; i++) {
-    const { url, bytes } = tests[i];
-    const t0 = performance.now();
-    let mbps = 0;
-    try {
-      const r = await fetch(url + '&t=' + Date.now(), { cache: 'no-store' });
-      const buf = await r.arrayBuffer();
+// ─── Download — streaming, gauge updates on every chunk ───────────────────────
+async function streamDownload(bytes) {
+  const url =
+    `https://speed.cloudflare.com/__down?bytes=${bytes}&t=` + Date.now();
+  const t0 = performance.now();
+  let received = 0;
+  try {
+    const resp = await fetch(url, { cache: 'no-store' });
+    const reader = resp.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.length;
       const elapsed = (performance.now() - t0) / 1000;
-      mbps = (buf.byteLength * 8) / elapsed / 1e6;
-    } catch (e) {
-      // fallback estimate
-      const elapsed = (performance.now() - t0) / 1000 || 1;
-      mbps = (bytes * 8) / elapsed / 1e6;
+      // live speed from bytes received so far
+      liveTargetSpeed = (received * 8) / elapsed / 1e6;
     }
+  } catch (e) {
+    const elapsed = (performance.now() - t0) / 1000 || 1;
+    liveTargetSpeed = (bytes * 8) / elapsed / 1e6;
+  }
+  const totalElapsed = (performance.now() - t0) / 1000 || 0.001;
+  return (received * 8) / totalElapsed / 1e6;
+}
+
+async function measureDownload() {
+  const sizes = [500000, 1000000, 2000000, 3000000, 5000000];
+  const results = [];
+  for (let i = 0; i < sizes.length; i++) {
+    setProgress(30 + i * 7, `Download sample ${i + 1}/${sizes.length}`);
+    const mbps = await streamDownload(sizes[i]);
     results.push(mbps);
     historyData.dl.push(parseFloat(mbps.toFixed(2)));
     drawHistoryGraph();
-    setProgress(
-      30 + (i + 1) * 7,
-      `Download sample ${i + 1}/5  (${mbps.toFixed(1)} Mbps)`,
-    );
-    animateGaugeTo(mbps, 350); // don't await — keep sampling
   }
-
-  // drop best + worst for stability
   results.sort((a, b) => a - b);
   const trimmed = results.slice(1, -1);
   return parseFloat(
@@ -259,43 +255,45 @@ async function measureDownload() {
   );
 }
 
-// ─── Upload (4 samples, continuous) ──────────────────────────────────────────
-async function measureUpload() {
-  const sizes = [300000, 600000, 1000000, 2000000];
-  const results = [];
-
-  for (let i = 0; i < sizes.length; i++) {
-    const size = sizes[i];
-    const blob = new Blob([new Uint8Array(size).fill(65)]);
+// ─── Upload — XHR with progress event = per-chunk live updates ────────────────
+function xhrUpload(blob) {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
     const t0 = performance.now();
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.loaded > 0) {
+        const elapsed = (performance.now() - t0) / 1000;
+        liveTargetSpeed = (e.loaded * 8) / elapsed / 1e6;
+      }
+    });
+    xhr.addEventListener('loadend', () => {
+      const elapsed = (performance.now() - t0) / 1000 || 0.001;
+      resolve((blob.size * 8) / elapsed / 1e6);
+    });
+    xhr.addEventListener('error', () => {
+      const elapsed = (performance.now() - t0) / 1000 || 0.001;
+      resolve((blob.size * 8) / elapsed / 1e6);
+    });
     try {
-      await fetch('https://speed.cloudflare.com/__up?t=' + Date.now(), {
-        method: 'POST',
-        body: blob,
-        cache: 'no-store',
-      });
+      xhr.open('POST', 'https://speed.cloudflare.com/__up?t=' + Date.now());
+      xhr.send(blob);
     } catch (e) {
-      try {
-        await fetch('https://httpbin.org/post?_=' + Date.now(), {
-          method: 'POST',
-          body: blob,
-          mode: 'no-cors',
-          cache: 'no-store',
-        });
-      } catch (e2) {}
+      resolve(0);
     }
-    const elapsed = (performance.now() - t0) / 1000 || 1;
-    const mbps = (size * 8) / elapsed / 1e6;
+  });
+}
+
+async function measureUpload() {
+  const sizes = [300000, 600000, 1500000, 3000000];
+  const results = [];
+  for (let i = 0; i < sizes.length; i++) {
+    setProgress(70 + i * 6, `Upload sample ${i + 1}/${sizes.length}`);
+    const blob = new Blob([new Uint8Array(sizes[i]).fill(65)]);
+    const mbps = await xhrUpload(blob);
     results.push(mbps);
     historyData.ul.push(parseFloat(mbps.toFixed(2)));
     drawHistoryGraph();
-    setProgress(
-      70 + (i + 1) * 6,
-      `Upload sample ${i + 1}/4  (${mbps.toFixed(1)} Mbps)`,
-    );
-    animateGaugeTo(mbps, 350);
   }
-
   results.sort((a, b) => a - b);
   const trimmed = results.slice(1, -1);
   return parseFloat(
@@ -333,9 +331,11 @@ async function runTest() {
   ['statPing', 'statDl', 'statUl'].forEach((id) =>
     document.getElementById(id).classList.remove('done'),
   );
-  currentSpeed = 0;
-  drawGauge(0);
-  document.getElementById('speedNum').textContent = '0';
+
+  // Reset + start live gauge loop
+  snapGaugeTo(0);
+  liveTargetSpeed = 0;
+  startLiveGauge();
 
   // Reset history
   historyData.dl = [];
@@ -365,6 +365,7 @@ async function runTest() {
   setProgress(66, 'Download done ✓');
 
   // ── Upload ──
+  liveTargetSpeed = 0;
   setProgress(70, 'Testing upload speed...');
   document.getElementById('phaseLabel').classList.add('pulsing');
   const ul = await measureUpload();
@@ -373,8 +374,11 @@ async function runTest() {
   document.getElementById('statUl').classList.add('done');
   setProgress(100, 'Test complete ✓');
 
-  await animateGaugeTo(dl, 700);
+  // Settle gauge to final download speed
+  liveTargetSpeed = dl;
   drawHistoryGraph();
+  await sleep(1000);
+  stopLiveGauge();
 
   const [ratingText, ratingClass] = getRating(dl);
   document.getElementById('resultRow').innerHTML =
